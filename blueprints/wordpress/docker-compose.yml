@@ -35,7 +35,15 @@ services:
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_MEMORY_LIMIT', '256M');
         define('DISALLOW_FILE_EDIT', true);
-    depends_on:
+        
+        // Preserve the visitor's HTTP/HTTPS scheme through Cloudflare Tunnel.
+        // Only trust this header when the backend is restricted to Cloudflare.
+        $$scheme = json_decode($$_SERVER['HTTP_CF_VISITOR'] ?? '', true)['scheme'] ?? null;
+        if (in_array($$scheme, ['http', 'https'], true)) {
+            $$_SERVER['HTTPS'] = $$scheme === 'https' ? 'on' : 'off';
+            $$_SERVER['SERVER_PORT'] = $$scheme === 'https' ? '443' : '80';
+            $$_SERVER['HTTP_X_FORWARDED_PROTO'] = $$scheme;
+        }    depends_on:
       wp_db:
         condition: service_healthy
     restart: unless-stopped
